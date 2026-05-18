@@ -137,13 +137,36 @@ You can set the sharing mode and customize your installation by adjusting the [c
 
 Once you have enabled this option on *all* the GPU nodes you wish to use,
 you can then enable GPU support in your cluster by deploying the following Daemonset:
-#### Normal Mode
+
+#### Configure and install with Helm
+
+Add the volcano-vgpu-device-plugin Helm repository:
+
+```
+helm repo add volcano-vgpu-device-plugin https://project-hami.github.io/volcano-vgpu-device-plugin
+helm repo update
+```
+
+Install the chart:
+```
+helm install volcano-vgpu-device-plugin volcano-vgpu-device-plugin/volcano-vgpu-device-plugin
+```
+
+If you want to enable CDI, you can use the following command to install.
+```
+helm install volcano-vgpu-device-plugin volcano-vgpu-device-plugin/volcano-vgpu-device-plugin \
+    --set cdi.enabled=true
+```
+
+#### Install with yaml
+
+##### Normal Mode
 
 ```
 $ kubectl apply -f deployments/static/volcano-vgpu-device-plugin.yml
 ```
-#### CDI Mode
-##### Modify deployments/static/volcano-vgpu-device-plugin.yml
+##### CDI Mode
+###### Modify deployments/static/volcano-vgpu-device-plugin.yml
 1. Add the following environment variables to the `env` section of the `volcano-device-plugin` container.
 ```
 - name: DEVICE_LIST_STRATEGY
@@ -185,7 +208,7 @@ $ kubectl apply -f deployments/static/volcano-vgpu-device-plugin.yml
     path: /usr/bin
     type: Directory
 ```
-##### Deploy
+###### Deploy
 ```
 $ kubectl apply -f deployments/static/volcano-vgpu-device-plugin.yml
 ```
