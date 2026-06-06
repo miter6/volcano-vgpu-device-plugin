@@ -21,6 +21,15 @@ And collaborate with volcano, it is possible to enable GPU sharing.
   - [Running vGPU Jobs](#running-vgpu-jobs)
 - [Issues and Contributing](#issues-and-contributing)
 
+## Version Compatibility Matrix
+
+The following table shows the compatibility matrix between Volcano-vgpu and Volcano versions. Please ensure you are using compatible versions.
+
+| Volcano-vgpu | Volcano |
+|--------------|---------|
+| v1.12.0 and below | v1.15.0 and below |
+| master       | master  |
+
 ## About
 
 The Volcano device plugin for Kubernetes is a Daemonset that allows you to automatically:
