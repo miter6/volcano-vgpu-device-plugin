@@ -1,0 +1,188 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: volcano-device-plugin
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "volcano-vgpu.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: volcano-device-plugin
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+      labels:
+        name: volcano-device-plugin
+        {{- include "volcano-vgpu.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.daemonset.priorityClassName }}
+      priorityClassName: {{ .Values.daemonset.priorityClassName }}
+      {{- end }}
+      serviceAccountName: {{ .Values.rbac.serviceAccountName }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: volcano-device-plugin
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "cp -f /k8s-vgpu/lib/nvidia/* /usr/local/vgpu/"]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: HOOK_PATH
+          value: "/usr/local/vgpu"
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: NVIDIA_MIG_MONITOR_DEVICES
+          value: "all"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "utility"
+        {{- if .Values.cdi.enabled }}
+        - name: DEVICE_LIST_STRATEGY
+          value: {{ .Values.cdi.deviceListStrategy }}
+        - name: NVIDIA_DRIVER_ROOT
+          value: {{ .Values.cdi.nvidiaDriverRoot }}
+        - name: NVIDIA_CDI_HOOK_PATH
+          value: {{ .Values.cdi.nvidiaHookPath }}
+        - name: GDRCOPY_ENABLED
+          value: "false"
+        - name: GDS_ENABLED
+          value: "false"
+        - name: MOFED_ENABLED
+          value: "false"
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: true
+          privileged: true
+          capabilities:
+            drop: ["ALL"]
+            add: ["SYS_ADMIN"]
+        volumeMounts:
+        - name: deviceconfig
+          mountPath: /config
+        - name: device-plugin
+          mountPath: /var/lib/kubelet/device-plugins
+        - name: lib
+          mountPath: /usr/local/vgpu
+        - name: hosttmp
+          mountPath: /tmp
+        {{- if .Values.cdi.enabled }}
+        - name: cdi-root
+          mountPath: /var/run/cdi
+        - name: driver-root
+          mountPath: /driver-root
+          readOnly: true
+        - name: usrbin
+          mountPath: /usrbin
+          readOnly: true
+        {{- end }}
+      {{- if .Values.monitor.enabled }}
+      - name: monitor
+        image: "{{ .Values.monitor.image.repository }}:{{ .Values.monitor.image.tag }}"
+        command:
+        - /bin/bash
+        - -c
+        - volcano-vgpu-monitor
+        imagePullPolicy: {{ .Values.monitor.image.pullPolicy }}
+        env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: NVIDIA_MIG_MONITOR_DEVICES
+          value: "all"
+        - name: HOOK_PATH
+          value: "/tmp/vgpu"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          privileged: true
+          allowPrivilegeEscalation: true
+          capabilities:
+            drop: ["ALL"]
+            add: ["SYS_ADMIN"]
+        volumeMounts:
+        - name: dockers
+          mountPath: /run/docker
+        - name: containerds
+          mountPath: /run/containerd
+        - name: sysinfo
+          mountPath: /sysinfo
+        - name: hostvar
+          mountPath: /hostvar
+        - name: hosttmp
+          mountPath: /tmp
+      {{- end }}
+      volumes:
+      {{- if .Values.nodeConfig.enabled }}
+      - name: deviceconfig
+        configMap:
+          name: volcano-vgpu-node-config
+      {{- else }}
+      - name: deviceconfig
+        configMap:
+          name: volcano-vgpu-device-config
+      {{- end }}
+      - name: device-plugin
+        hostPath:
+          path: {{ .Values.hostPaths.devicePlugin }}
+          type: Directory
+      - name: lib
+        hostPath:
+          path: {{ .Values.hostPaths.vgpuLib }}
+          type: DirectoryOrCreate
+      - name: hosttmp
+        hostPath:
+          path: {{ .Values.hostPaths.tmp }}
+          type: DirectoryOrCreate
+      {{- if .Values.monitor.enabled }}
+      - name: dockers
+        hostPath:
+          path: {{ .Values.hostPaths.docker }}
+          type: DirectoryOrCreate
+      - name: containerds
+        hostPath:
+          path: {{ .Values.hostPaths.containerd }}
+          type: DirectoryOrCreate
+      - name: sysinfo
+        hostPath:
+          path: {{ .Values.hostPaths.sys }}
+          type: Directory
+      - name: hostvar
+        hostPath:
+          path: {{ .Values.hostPaths.var }}
+          type: Directory
+      {{- end }}
+      {{- if .Values.cdi.enabled }}
+      - name: driver-root
+        hostPath:
+          path: /
+          type: Directory
+      - name: cdi-root
+        hostPath:
+          path: /var/run/cdi
+          type: DirectoryOrCreate
+      - name: usrbin
+        hostPath:
+          path: /usr/bin
+          type: Directory
+      {{- end }}

@@ -1,0 +1,30 @@
+{{- if .Values.nodeConfig.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: volcano-vgpu-node-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/component: volcano-vgpu-node-plugin
+    {{- include "volcano-vgpu.labels" . | nindent 4 }}
+data:
+  config.json: |
+    {
+        "nodeconfig": [
+          {{- range $index, $config := .Values.nodeConfig.configs }}
+          {{- if $index }},{{ end }}
+            {
+                "name": {{ $config.name | quote }},
+                "operatingmode": {{ $config.operatingmode | quote }},
+                "devicememoryscaling": {{ $config.devicememoryscaling }},
+                "devicesplitcount": {{ $config.devicesplitcount }},
+                "migstrategy": {{ $config.migstrategy | quote }},
+                "filterdevices": {
+                  "uuid": {{ $config.filterdevices.uuid | toJson }},
+                  "index": {{ $config.filterdevices.index | toJson }}
+                }
+            }
+          {{- end }}
+        ]
+    }
+{{- end }}

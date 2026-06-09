@@ -1,0 +1,156 @@
+# Default values for volcano-vgpu-device-plugin
+
+namespace: kube-system
+
+image:
+  repository: docker.io/projecthami/volcano-vgpu-device-plugin
+  tag: v1.12.0
+  pullPolicy: IfNotPresent
+
+monitor:
+  enabled: true
+  image:
+    repository: docker.io/projecthami/volcano-vgpu-device-plugin
+    tag: v1.12.0
+    pullPolicy: IfNotPresent
+
+# Device configuration (volcano-vgpu-device-config)
+deviceConfig:
+  nvidia:
+    resourceCountName: "volcano.sh/vgpu-number"
+    resourceMemoryName: "volcano.sh/vgpu-memory"
+    resourceMemoryPercentageName: "volcano.sh/vgpu-memory-percentage"
+    resourceCoreName: "volcano.sh/vgpu-cores"
+    overwriteEnv: false
+    defaultMemory: 0
+    defaultCores: 0
+    defaultGPUNum: 1
+    deviceSplitCount: 10
+    deviceMemoryScaling: 1
+    deviceCoreScaling: 1
+    gpuMemoryFactor: 1
+    knownMigGeometries:
+      - models: ["A30"]
+        allowedGeometries:
+          - group: group1
+            geometries:
+              - name: 1g.6gb
+                memory: 6144
+                count: 4
+          - group: group2
+            geometries:
+              - name: 2g.12gb
+                memory: 12288
+                count: 2
+          - group: group3
+            geometries:
+              - name: 4g.24gb
+                memory: 24576
+                count: 1
+      - models: ["A100-SXM4-40GB", "A100-40GB-PCIe", "A100-PCIE-40GB", "A100-SXM4-40GB"]
+        allowedGeometries:
+          - group: "group1"
+            geometries:
+              - name: 1g.5gb
+                memory: 5120
+                count: 7
+          - group: "group2"
+            geometries:
+              - name: 2g.10gb
+                memory: 10240
+                count: 3
+              - name: 1g.5gb
+                memory: 5120
+                count: 1
+          - group: "group3"
+            geometries:
+              - name: 3g.20gb
+                memory: 20480
+                count: 2
+          - group: "group4"
+            geometries:
+              - name: 7g.40gb
+                memory: 40960
+                count: 1
+      - models: ["A100-SXM4-80GB", "A100-80GB-PCIe", "A100-PCIE-80GB"]
+        allowedGeometries:
+          - group: "group1"
+            geometries:
+              - name: 1g.10gb
+                memory: 9728
+                count: 7
+          - group: "group2"
+            geometries:
+              - name: 2g.20gb
+                memory: 19968
+                count: 3
+              - name: 1g.10gb
+                memory: 9728
+                count: 1
+          - group: "group3"
+            geometries:
+              - name: 3g.40gb
+                memory: 40192
+                count: 2
+          - group: "group4"
+            geometries:
+              - name: 7g.80gb
+                memory: 80896
+                count: 1
+
+# Node configuration (volcano-vgpu-node-config)
+nodeConfig:
+  enabled: true
+  configs:
+    - name: "aio-node67"
+      operatingmode: "hami-core"
+      devicememoryscaling: 1.8
+      devicesplitcount: 10
+      migstrategy: "none"
+      filterdevices:
+        uuid: []
+        index: []
+
+# RBAC configuration
+rbac:
+  create: true
+  serviceAccountName: volcano-device-plugin
+
+# Daemonset configuration
+daemonset:
+  priorityClassName: "system-node-critical"
+  tolerations: []
+  # Additional tolerations can be added:
+  # - key: volcano.sh/gpu-memory
+  #   operator: Exists
+  #   effect: NoSchedule
+
+# Host paths
+hostPaths:
+  devicePlugin: /var/lib/kubelet/device-plugins
+  vgpuLib: /usr/local/vgpu
+  tmp: /tmp
+  docker: /run/docker
+  containerd: /run/containerd
+  sys: /sys
+  var: /var
+
+# Node selector
+nodeSelector: {}
+
+# Affinity
+affinity: {}
+
+# Tolerations for the pod
+tolerations:
+- key: CriticalAddonsOnly
+  operator: Exists
+- key: volcano.sh/gpu-memory
+  operator: Exists
+  effect: NoSchedule
+
+cdi:
+  enabled: false
+  deviceListStrategy: "cdi-annotations"
+  nvidiaHookPath: "/usr/bin/nvidia-ctk"
+  nvidiaDriverRoot: "/"

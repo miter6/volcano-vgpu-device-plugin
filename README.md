@@ -146,14 +146,80 @@ You can set the sharing mode and customize your installation by adjusting the [c
 
 Once you have enabled this option on *all* the GPU nodes you wish to use,
 you can then enable GPU support in your cluster by deploying the following Daemonset:
-#### Normal Mode
+
+#### Configure and install with Helm
+
+Add the volcano-vgpu-device-plugin Helm repository:
 
 ```
-$ kubectl apply -f volcano-vgpu-device-plugin.yml
+helm repo add volcano-vgpu-device-plugin https://project-hami.github.io/volcano-vgpu-device-plugin
+helm repo update
 ```
-#### CDI Mode
+
+Install the chart:
 ```
-$ kubectl apply -f volcano-vgpu-device-plugin-cdi.yml
+helm install volcano-vgpu-device-plugin volcano-vgpu-device-plugin/volcano-vgpu-device-plugin
+```
+
+If you want to enable CDI, you can use the following command to install.
+```
+helm install volcano-vgpu-device-plugin volcano-vgpu-device-plugin/volcano-vgpu-device-plugin \
+    --set cdi.enabled=true
+```
+
+#### Install with yaml
+
+##### Normal Mode
+
+```
+$ kubectl apply -f deployments/static/volcano-vgpu-device-plugin.yml
+```
+##### CDI Mode
+###### Modify deployments/static/volcano-vgpu-device-plugin.yml
+1. Add the following environment variables to the `env` section of the `volcano-device-plugin` container.
+```
+- name: DEVICE_LIST_STRATEGY
+  value: "cdi-annotations"
+- name: NVIDIA_DRIVER_ROOT
+  value: /
+- name: NVIDIA_CDI_HOOK_PATH
+  value: /usr/bin/nvidia-ctk
+- name: GDRCOPY_ENABLED
+  value: "false"
+- name: GDS_ENABLED
+  value: "false"
+- name: MOFED_ENABLED
+  value: "false"
+```
+2. Add the following configuration to the `volumeMounts` section of the `volcano-device-plugin` container.
+```
+- name: cdi-root
+  mountPath: /var/run/cdi
+- name: driver-root
+  mountPath: /driver-root
+  readOnly: true
+- name: usrbin
+  mountPath: /usrbin
+  readOnly: true
+```
+3. Add the following configuration to the `volumes` section.
+```
+- name: driver-root
+  hostPath:
+    path: /
+    type: Directory
+- name: cdi-root
+  hostPath:
+    path: /var/run/cdi
+    type: DirectoryOrCreate
+- name: usrbin
+  hostPath:
+    path: /usr/bin
+    type: Directory
+```
+###### Deploy
+```
+$ kubectl apply -f deployments/static/volcano-vgpu-device-plugin.yml
 ```
 
 ### Verify environment is ready

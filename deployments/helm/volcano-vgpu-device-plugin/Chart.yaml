@@ -1,0 +1,7 @@
+apiVersion: v2
+name: volcano-vgpu-device-plugin
+description: A Helm chart for Volcano vGPU Device Plugin
+type: application
+version: 1.12.0
+appVersion: 1.12.0
+home: https://github.com/Project-HAMi/volcano-vgpu-device-plugin

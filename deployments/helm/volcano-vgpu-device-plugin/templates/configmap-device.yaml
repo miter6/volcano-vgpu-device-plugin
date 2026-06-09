@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: volcano-vgpu-device-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/component: volcano-vgpu-device-plugin
+    {{- include "volcano-vgpu.labels" . | nindent 4 }}
+data:
+  device-config.yaml: |-
+    nvidia:
+      resourceCountName: {{ .Values.deviceConfig.nvidia.resourceCountName | quote }}
+      resourceMemoryName: {{ .Values.deviceConfig.nvidia.resourceMemoryName | quote }}
+      resourceMemoryPercentageName: {{ .Values.deviceConfig.nvidia.resourceMemoryPercentageName | quote }}
+      resourceCoreName: {{ .Values.deviceConfig.nvidia.resourceCoreName | quote }}
+      overwriteEnv: {{ .Values.deviceConfig.nvidia.overwriteEnv }}
+      defaultMemory: {{ .Values.deviceConfig.nvidia.defaultMemory }}
+      defaultCores: {{ .Values.deviceConfig.nvidia.defaultCores }}
+      defaultGPUNum: {{ .Values.deviceConfig.nvidia.defaultGPUNum }}
+      deviceSplitCount: {{ .Values.deviceConfig.nvidia.deviceSplitCount }}
+      deviceMemoryScaling: {{ .Values.deviceConfig.nvidia.deviceMemoryScaling }}
+      deviceCoreScaling: {{ .Values.deviceConfig.nvidia.deviceCoreScaling }}
+      gpuMemoryFactor: {{ .Values.deviceConfig.nvidia.gpuMemoryFactor }}
+      knownMigGeometries:
+{{ .Values.deviceConfig.nvidia.knownMigGeometries | toYaml | nindent 6 }}

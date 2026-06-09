@@ -1,0 +1,58 @@
+name: Release Helm Chart
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # create GitHub Releases & push to gh-pages
+  packages: write   # push OCI chart to GHCR
+
+jobs:
+  helm-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.0
+
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.6.0
+        with:
+          charts_dir: charts
+          skip_existing: true
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to GHCR (OCI)
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          # Extract chart version from Chart.yaml
+          CHART_VERSION=$(grep '^version:' deployments/helm/volcano-vgpu-device-plugin/Chart.yaml | awk '{print $2}')
+
+          helm package deployments/helm/volcano-vgpu-device-plugin --destination /tmp/helm-pkg
+
+          helm push /tmp/helm-pkg/volcano-vgpu-device-plugin-${CHART_VERSION}.tgz \
+            oci://ghcr.io/${REPO_LOWER}/charts
